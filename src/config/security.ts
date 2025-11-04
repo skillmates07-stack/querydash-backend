@@ -8,16 +8,10 @@ export function generateCSRFToken(): string {
 }
 
 /**
- * Validate CSRF token
+ * Validate CSRF token (simplified - no timingSafeEqual)
  */
 export function validateCSRFToken(token: string, sessionToken: string): boolean {
-  try {
-    const tokenBuf = Buffer.from(token);
-    const sessionBuf = Buffer.from(sessionToken);
-    return crypto.timingSafeEqual(tokenBuf, sessionBuf);
-  } catch {
-    return false;
-  }
+  return token === sessionToken;
 }
 
 /**
@@ -64,7 +58,7 @@ export function isStrongPassword(password: string): {
 }
 
 /**
- * SQL injection prevention: Prepared statements
+ * SQL injection prevention
  */
 export function validateSQLQuery(query: string): boolean {
   const dangerousPatterns = [
@@ -78,4 +72,3 @@ export function validateSQLQuery(query: string): boolean {
 
   return !dangerousPatterns.some(pattern => pattern.test(query));
 }
-
