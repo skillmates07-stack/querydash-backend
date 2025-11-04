@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import { Request, Response, NextFunction } from 'express';
 
 /**
  * Generate CSRF token
@@ -12,10 +11,14 @@ export function generateCSRFToken(): string {
  * Validate CSRF token
  */
 export function validateCSRFToken(token: string, sessionToken: string): boolean {
-  return crypto.timingSafeEqual(
-    Buffer.from(token),
-    Buffer.from(sessionToken)
-  );
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(token),
+      Buffer.from(sessionToken)
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -23,9 +26,9 @@ export function validateCSRFToken(token: string, sessionToken: string): boolean 
  */
 export function sanitizeInput(input: string): string {
   return input
-    .replace(/[<>]/g, '') // Remove angle brackets
+    .replace(/[<>]/g, '')
     .trim()
-    .substring(0, 500); // Max length
+    .substring(0, 500);
 }
 
 /**
@@ -63,10 +66,8 @@ export function isStrongPassword(password: string): {
 
 /**
  * SQL injection prevention: Prepared statements
- * Use parameterized queries throughout the app
  */
 export function validateSQLQuery(query: string): boolean {
-  // Prevent dangerous SQL keywords
   const dangerousPatterns = [
     /DELETE\s+FROM/i,
     /DROP\s+TABLE/i,
