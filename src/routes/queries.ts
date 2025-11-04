@@ -1,7 +1,6 @@
 import express, { Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth.js';
 import { pool } from '../config/database.js';
-import { redis } from '../config/redis.js';
 
 const router = express.Router();
 
@@ -10,19 +9,14 @@ router.post(
   authenticate,
   async (req: AuthRequest, res: Response) => {
     try {
-      const { dashboardId } = req.params;
+      const dashboardId = (req.params as { dashboardId: string }).dashboardId;
       const { naturalLanguage } = req.body as { naturalLanguage: string };
 
       if (!naturalLanguage) {
         return res.status(400).json({ error: 'Natural language query required' });
       }
 
-      const cacheKey = `query:${dashboardId}:${naturalLanguage}`;
-      const cached = await redis.get(cacheKey);
-      if (cached) {
-        return res.json({ data: JSON.parse(cached), fromCache: true });
-      }
-
+      // Mock result (no Redis caching for MVP)
       const result = {
         columns: ['id', 'name', 'value'],
         rows: [
@@ -31,8 +25,7 @@ router.post(
         ]
       };
 
-      await redis.set(cacheKey, JSON.stringify(result), 5);
-
+      // Save query to database
       await pool.query(
         'INSERT INTO queries (dashboard_id, natural_language, result) VALUES ($1, $2, $3)',
         [dashboardId, naturalLanguage, JSON.stringify(result)]
