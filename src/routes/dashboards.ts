@@ -18,7 +18,10 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 
 router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { name, description } = req.body as { name: string; description: string };
+    const { name, description } = (req.body || {}) as {
+      name: string;
+      description: string;
+    };
     const result = await pool.query(
       'INSERT INTO dashboards (user_id, name, description) VALUES ($1, $2, $3) RETURNING *',
       [req.user?.id, name, description]
