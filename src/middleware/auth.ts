@@ -3,6 +3,10 @@ import jwt from 'jsonwebtoken';
 
 export interface AuthRequest extends Request {
   user?: { id: number; email: string };
+  headers: {
+    authorization?: string;
+    [key: string]: string | string[] | undefined;
+  };
 }
 
 export function authenticate(
@@ -17,8 +21,11 @@ export function authenticate(
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-    req.user = decoded as { id: number; email: string };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as {
+      id: number;
+      email: string;
+    };
+    req.user = decoded;
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid token' });
