@@ -3,9 +3,6 @@ import jwt from 'jsonwebtoken';
 
 export interface AuthRequest extends Request {
   user?: { id: number; email: string };
-  body: {
-    [key: string]: unknown;
-  };
 }
 
 export function authenticate(
@@ -13,7 +10,8 @@ export function authenticate(
   res: Response,
   next: NextFunction
 ) {
-  const token = req.headers.authorization?.split(' ')[1];
+  const authHeader = req.get('authorization');
+  const token = authHeader?.split(' ')[1];
 
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
