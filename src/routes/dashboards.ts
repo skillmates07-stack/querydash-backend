@@ -1,10 +1,10 @@
-import express from 'express';
+import express, { Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth.js';
 import { pool } from '../config/database.js';
 
 const router = express.Router();
 
-router.get('/', authenticate, async (req: AuthRequest, res) => {
+router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(
       'SELECT * FROM dashboards WHERE user_id = $1 ORDER BY created_at DESC',
@@ -16,9 +16,9 @@ router.get('/', authenticate, async (req: AuthRequest, res) => {
   }
 });
 
-router.post('/', authenticate, async (req: AuthRequest, res) => {
+router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { name, description } = req.body;
+    const { name, description } = req.body as { name: string; description: string };
     const result = await pool.query(
       'INSERT INTO dashboards (user_id, name, description) VALUES ($1, $2, $3) RETURNING *',
       [req.user?.id, name, description]
