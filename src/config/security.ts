@@ -12,10 +12,9 @@ export function generateCSRFToken(): string {
  */
 export function validateCSRFToken(token: string, sessionToken: string): boolean {
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(token),
-      Buffer.from(sessionToken)
-    );
+    const tokenBuf = Buffer.from(token);
+    const sessionBuf = Buffer.from(sessionToken);
+    return crypto.timingSafeEqual(tokenBuf, sessionBuf);
   } catch {
     return false;
   }
@@ -79,3 +78,4 @@ export function validateSQLQuery(query: string): boolean {
 
   return !dangerousPatterns.some(pattern => pattern.test(query));
 }
+
