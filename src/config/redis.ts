@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Upstash Redis REST API helper (no client library needed)
+// Upstash Redis REST API helper
 export class RedisClient {
   private baseUrl: string;
   private token: string;
@@ -23,7 +23,7 @@ export class RedisClient {
       const response = await fetch(`${this.baseUrl}/get/${key}`, {
         headers: { Authorization: `Bearer ${this.token}` }
       });
-      const data = await response.json();
+      const data = (await response.json()) as { result: string | null };
       return data.result;
     } catch (error) {
       console.error('Redis GET failed:', error);
@@ -63,7 +63,6 @@ export const redis = new RedisClient();
 
 export async function initializeRedis() {
   try {
-    // Test connection
     if (process.env.REDIS_URL) {
       console.log('✅ Redis configured');
     }
