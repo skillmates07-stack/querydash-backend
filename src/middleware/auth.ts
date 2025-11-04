@@ -1,8 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
+// Extend Express Request to include all needed properties
 export interface AuthRequest extends Request {
   user?: { id: number; email: string };
+  get?: (header: string) => string | undefined;
+  params?: { [key: string]: string };
+  body?: { [key: string]: unknown };
 }
 
 export function authenticate(
@@ -10,7 +14,9 @@ export function authenticate(
   res: Response,
   next: NextFunction
 ) {
-  const authHeader = req.get('authorization');
+  const authHeader = (req.get as (header: string) => string | undefined)?.(
+    'authorization'
+  );
   const token = authHeader?.split(' ')[1];
 
   if (!token) {
