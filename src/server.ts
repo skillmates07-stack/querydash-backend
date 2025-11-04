@@ -64,11 +64,15 @@ io.on('connection', (socket) => {
     socket.join(`dashboard-${dashboardId}`);
   });
 
-  socket.on('execute-query', async (data: any) => {
+  socket.on('execute-query', async (data: unknown) => {
     try {
-      const { dashboardId, queryId, naturalLanguage } = data;
-      
-      // Emit mock result
+      const queryData = data as {
+        dashboardId: string;
+        queryId: string;
+        naturalLanguage: string;
+      };
+      const { dashboardId, queryId, naturalLanguage } = queryData;
+
       io.to(`dashboard-${dashboardId}`).emit('query-result', {
         queryId,
         data: { columns: ['test'], rows: [{ test: 'value' }] },
@@ -93,7 +97,7 @@ async function start() {
   try {
     await initializeDatabase();
     await initializeRedis();
-    
+
     httpServer.listen(PORT, () => {
       logger.info(`✅ QueryDash backend running on port ${PORT}`);
     });
@@ -103,7 +107,6 @@ async function start() {
   }
 }
 
-// Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('Shutting down...');
   httpServer.close(() => process.exit(0));
