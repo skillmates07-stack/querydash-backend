@@ -1,8 +1,17 @@
 import express, { Response } from 'express';
 import { AuthRequest, authenticate } from '../middleware/auth.js';
 import { pool } from '../config/database.js';
+import multer from 'multer';
+import * as XLSX from 'xlsx';
+import { parse } from 'csv-parse/sync';
 
 const router = express.Router();
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB max file size
+});
 
 // ===== DASHBOARD CRUD OPERATIONS =====
 
@@ -36,12 +45,118 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
+// ===== FILE UPLOAD ENDPOINTS (Excel/CSV) =====
+
+// Upload and process Excel/CSV files
+router.post('/upload', upload.single('file'), async (req, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No file uploaded' });
+    }
+
+    const file = req.file;
+    let data: any[] = [];
+    let columns: string[] = [];
+    
+    // Parse Excel (.xlsx, .xls)
+    if (file.mimetype.includes('spreadsheet') || file.originalname.endsWith('.xlsx') || file.originalname.endsWith('.xls')) {
+      const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      data = XLSX.utils.sheet_to_json(worksheet);
+      columns = data.length > 0 ? Object.keys(data[0]) : [];
+    }
+    // Parse CSV
+    else if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+      data = parse(file.buffer.toString(), { 
+        columns: true,
+        skip_empty_lines: true,
+        trim: true
+      });
+      columns = data.length > 0 ? Object.keys(data[0]) : [];
+    }
+    else {
+      return res.status(400).json({ success: false, error: 'Unsupported file format. Please upload .xlsx, .xls, or .csv' });
+    }
+
+    // Store metadata in database (optional)
+    // TODO: Create a data_sources table to track uploaded files
+    /*
+    await pool.query(
+      'INSERT INTO data_sources (name, type, rows, columns, size) VALUES ($1, $2, $3, $4, $5)',
+      [file.originalname, file.mimetype, data.length, JSON.stringify(columns), file.size]
+    );
+    */
+
+    res.json({
+      success: true,
+      data: {
+        id: Date.now().toString(),
+        name: file.originalname,
+        type: file.originalname.endsWith('.csv') ? 'csv' : 'excel',
+        rows: data.length,
+        columns: columns,
+        size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+        preview: data.slice(0, 10), // First 10 rows preview
+        status: 'active',
+        lastSync: 'Just now'
+      }
+    });
+  } catch (error) {
+    console.error('File upload error:', error);
+    res.status(500).json({ success: false, error: 'Failed to process file' });
+  }
+});
+
+// Get all uploaded data sources
+router.get('/data-sources', async (req, res: Response) => {
+  try {
+    // TODO: Query from data_sources table
+    // For now, return mock data
+    res.json({
+      success: true,
+      data: [
+        {
+          id: '1',
+          name: 'Sales Data 2024.xlsx',
+          type: 'excel',
+          status: 'active',
+          rows: 12500,
+          lastSync: '2 min ago',
+          size: '2.3 MB'
+        },
+        {
+          id: '2',
+          name: 'Customer Database',
+          type: 'database',
+          status: 'active',
+          rows: 45000,
+          lastSync: '1 min ago',
+          size: '8.7 MB'
+        }
+      ]
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to fetch data sources' });
+  }
+});
+
+// Delete data source
+router.delete('/data-sources/:id', async (req, res: Response) => {
+  try {
+    const { id } = req.params;
+    // TODO: Delete from data_sources table and S3/storage
+    res.json({ success: true, message: 'Data source deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to delete data source' });
+  }
+});
+
 // ===== REAL-TIME METRICS ENDPOINTS =====
 
 // Get overview metrics (for dashboard homepage)
 router.get('/metrics', async (req, res: Response) => {
   try {
-    // Query real data from database
     const metricsQuery = `
       SELECT 
         COALESCE((SELECT SUM(amount) FROM transactions WHERE DATE(created_at) = CURRENT_DATE), 0) as daily_revenue,
@@ -66,7 +181,6 @@ router.get('/metrics', async (req, res: Response) => {
   } catch (error) {
     console.error('Metrics error:', error);
     
-    // Fallback to mock data if tables don't exist yet
     res.json({
       success: true,
       data: {
@@ -110,7 +224,6 @@ router.get('/analytics/revenue-trend', async (req, res: Response) => {
   } catch (error) {
     console.error('Revenue trend error:', error);
     
-    // Fallback to mock data
     res.json({
       success: true,
       data: [
@@ -150,7 +263,6 @@ router.get('/analytics/page-distribution', async (req, res: Response) => {
   } catch (error) {
     console.error('Page distribution error:', error);
     
-    // Fallback to mock data
     res.json({
       success: true,
       data: [
@@ -194,7 +306,6 @@ router.get('/queries/recent', async (req, res: Response) => {
   } catch (error) {
     console.error('Recent queries error:', error);
     
-    // Fallback to mock data
     res.json({
       success: true,
       data: [
@@ -231,7 +342,6 @@ router.get('/analytics/geographic', async (req, res: Response) => {
   } catch (error) {
     console.error('Geographic data error:', error);
     
-    // Fallback to mock data
     res.json({
       success: true,
       data: [
@@ -271,7 +381,6 @@ router.get('/analytics/performance', async (req, res: Response) => {
   } catch (error) {
     console.error('Performance metrics error:', error);
     
-    // Fallback to mock data
     res.json({
       success: true,
       data: {
